@@ -10,8 +10,8 @@ function SkinDiseaseForm() {
     duration: '',
     durationOption: '',
     spreading: '',
-    sensations: [], // itching, pain, burning, none
-    appearance: [], // white, dark, red, scaly, circular
+    sensations: [],
+    appearance: [],
     sunExposure: '',
     newMedication: '',
     familyHistory: '',
@@ -43,11 +43,7 @@ function SkinDiseaseForm() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      // handled separately via dedicated handler
-      return;
-    }
+    const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value
@@ -80,32 +76,28 @@ function SkinDiseaseForm() {
       const data = new FormData();
       data.append('image', formData.image);
       data.append('symptoms', formData.symptoms);
-  data.append('duration', formData.duration);
-  data.append('durationOption', formData.durationOption);
-  data.append('spreading', formData.spreading);
-  data.append('sensations', JSON.stringify(formData.sensations || []));
-  data.append('appearance', JSON.stringify(formData.appearance || []));
-  data.append('sunExposure', formData.sunExposure);
-  data.append('newMedication', formData.newMedication);
-  data.append('familyHistory', formData.familyHistory);
-  data.append('stress', formData.stress);
-  data.append('oozing', formData.oozing);
-  data.append('severity', formData.severity);
+      data.append('duration', formData.duration);
+      data.append('severity', formData.severity);
 
+      console.log('📤 Sending prediction request...');
       const response = await predictionAPI.predict(data);
       
-      let normalizedResult;
+      console.log('📥 Received response:', response.data);
       
       if (response.data.success) {
-        const predictionData = response.data.prediction || response.data;
+        // Extract disease and confidence from response
+        // Handle both flat structure and nested structure
+        const disease = response.data.disease || response.data.prediction;
+        const confidence = response.data.confidence || 0;
         
-        normalizedResult = {
-          prediction: {
-            disease: predictionData.disease,
-            confidence: predictionData.confidence || 0,
-            model: predictionData.model || 'XGBoost',
-            predictionId: response.data.predictionId || null
-          },
+        console.log('✅ Extracted disease:', disease);
+        console.log('✅ Extracted confidence:', confidence);
+        
+        // Create normalized result structure that Results.jsx expects
+        const normalizedResult = {
+          disease: disease,
+          prediction: disease,
+          confidence: confidence,
           metadata: {
             symptoms: formData.symptoms,
             duration: formData.duration,
@@ -120,10 +112,15 @@ function SkinDiseaseForm() {
             oozing: formData.oozing,
             severity: formData.severity
           },
-          alternative_predictions: response.data.alternative_predictions || {},
-          all_probabilities: response.data.all_probabilities || {}
+          all_predictions: response.data.all_predictions || {},
+          recommendations: response.data.recommendations || [],
+          model_details: response.data.model_details || {},
+          predictionId: Date.now().toString()
         };
 
+        console.log('📦 Normalized result:', normalizedResult);
+
+        // Navigate to results page with the normalized data
         navigate('/results', { 
           state: { result: normalizedResult }
         });
@@ -132,12 +129,13 @@ function SkinDiseaseForm() {
       }
 
     } catch (err) {
-      console.error('Prediction error:', err);
+      console.error('❌ Prediction error:', err);
       
       if (err.response) {
-        setError(err.response.data.message || 'Failed to get prediction');
+        console.error('Response error:', err.response.data);
+        setError(err.response.data.message || err.response.data.error || 'Failed to get prediction');
       } else if (err.request) {
-        setError('Cannot connect to server. Make sure backend and ML server are running.');
+        setError('Cannot connect to server. Please check your internet connection.');
       } else {
         setError('An error occurred. Please try again.');
       }
@@ -200,126 +198,106 @@ function SkinDiseaseForm() {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-4 mt-4">
-                      {/* Post-upload questionnaire shown only after image is selected */}
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <h3 className="font-semibold text-gray-800 mb-3">Quick Questions (optional)</h3>
-                        <div className="text-sm text-gray-600 mb-3">Step {step} of 4</div>
+                    
+                    {/* Post-upload questionnaire */}
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <h3 className="font-semibold text-gray-800 mb-3">Quick Questions (optional)</h3>
+                      <div className="text-sm text-gray-600 mb-3">Step {step} of 4</div>
 
-                        {/* Step 1: Duration & spreading */}
-                        {step === 1 && (
+                      {/* Step 1: Duration & spreading */}
+                      {step === 1 && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-2">How long have you had this skin problem?</p>
+                          <select name="durationOption" value={formData.durationOption} onChange={(e) => handleOptionChange('durationOption', e.target.value)} className="w-full px-3 py-2 rounded-lg border mb-4">
+                            <option value="">Select duration</option>
+                            <option value="<1week">Less than 1 week</option>
+                            <option value="1-4weeks">1–4 weeks</option>
+                            <option value="1-3months">1–3 months</option>
+                            <option value=">3months">More than 3 months</option>
+                          </select>
+
+                          <p className="text-sm font-medium text-gray-700 mb-2">Is the affected area spreading?</p>
+                          <div className="flex flex-col gap-3">
+                            <button type="button" onClick={() => handleOptionChange('spreading','yes')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.spreading==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
+                            <button type="button" onClick={() => handleOptionChange('spreading','no')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.spreading==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 2: Sensations & appearance */}
+                      {step === 2 && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-2">Do you feel itching, pain, or burning?</p>
+                          <div className="flex flex-col gap-2 mb-4">
+                            {['Itching','Pain','Burning','None'].map(s => (
+                              <button key={s} type="button" onClick={() => handleCheckboxToggle('sensations', s)} className={`w-full text-left py-3 px-4 rounded-lg ${formData.sensations.includes(s) ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>{s}</button>
+                            ))}
+                          </div>
+
+                          <p className="text-sm font-medium text-gray-700 mb-2">How does the skin look?</p>
+                          <div className="flex flex-col gap-2">
+                            {['White patches','Dark spots','Red/inflamed','Scaly/dry','Circular patch'].map(a => (
+                              <button key={a} type="button" onClick={() => handleCheckboxToggle('appearance', a)} className={`w-full text-left py-3 px-4 rounded-lg ${formData.appearance.includes(a) ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>{a}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 3: Triggers */}
+                      {step === 3 && (
+                        <div className="space-y-4">
                           <div>
-                            <p className="text-sm font-medium text-gray-700 mb-2">How long have you had this skin problem?</p>
-                            <select name="durationOption" value={formData.durationOption} onChange={(e) => handleOptionChange('durationOption', e.target.value)} className="w-full px-3 py-2 rounded-lg border mb-4">
-                              <option value="">Select duration</option>
-                              <option value="<1week">Less than 1 week</option>
-                              <option value="1-4weeks">1–4 weeks</option>
-                              <option value="1-3months">1–3 months</option>
-                              <option value=">3months">More than 3 months</option>
-                            </select>
-
-                            <p className="text-sm font-medium text-gray-700 mb-2">Is the affected area spreading to nearby regions?</p>
+                            <p className="text-sm font-medium text-gray-700 mb-2">Frequent sun exposure?</p>
                             <div className="flex flex-col gap-3">
-                              <button type="button" onClick={() => handleOptionChange('spreading','yes')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.spreading==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
-                              <button type="button" onClick={() => handleOptionChange('spreading','no')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.spreading==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
+                              <button type="button" onClick={() => handleOptionChange('sunExposure','yes')} className={`w-full py-3 px-4 rounded-lg ${formData.sunExposure==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
+                              <button type="button" onClick={() => handleOptionChange('sunExposure','no')} className={`w-full py-3 px-4 rounded-lg ${formData.sunExposure==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
                             </div>
                           </div>
-                        )}
 
-                        {/* Step 2: Sensations & appearance */}
-                        {step === 2 && (
                           <div>
-                            <p className="text-sm font-medium text-gray-700 mb-2">Do you feel itching, pain, or burning in that area?</p>
-                            <div className="flex flex-col gap-2 mb-4">
-                              {['Itching','Pain','Burning','None'].map(s => (
-                                <button key={s} type="button" onClick={() => handleCheckboxToggle('sensations', s)} className={`w-full text-left py-3 px-4 rounded-lg ${formData.sensations.includes(s) ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>{s}</button>
-                              ))}
-                            </div>
-
-                            <p className="text-sm font-medium text-gray-700 mb-2">How does the skin look?</p>
-                            <div className="flex flex-col gap-2">
-                              {['White or pale patches','Dark or pigmented spots','Red/inflamed area','Scaly or dry surface','Circular patch'].map(a => (
-                                <button key={a} type="button" onClick={() => handleCheckboxToggle('appearance', a)} className={`w-full text-left py-3 px-4 rounded-lg ${formData.appearance.includes(a) ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>{a}</button>
-                              ))}
+                            <p className="text-sm font-medium text-gray-700 mb-2">Started after new medication?</p>
+                            <div className="flex flex-col gap-3">
+                              <button type="button" onClick={() => handleOptionChange('newMedication','yes')} className={`w-full py-3 px-4 rounded-lg ${formData.newMedication==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
+                              <button type="button" onClick={() => handleOptionChange('newMedication','no')} className={`w-full py-3 px-4 rounded-lg ${formData.newMedication==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
                             </div>
                           </div>
-                        )}
 
-                        {/* Step 3: Triggers & family */}
-                        {step === 3 && (
                           <div>
-                            <div className="grid grid-cols-1 gap-3 mb-4">
-                              <div>
-                                <p className="text-sm font-medium text-gray-700 mb-2">Are you frequently exposed to sunlight or UV rays?</p>
-                                <div className="flex flex-col gap-3">
-                                  <button type="button" onClick={() => handleOptionChange('sunExposure','yes')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.sunExposure==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
-                                  <button type="button" onClick={() => handleOptionChange('sunExposure','no')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.sunExposure==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
-                                </div>
-                              </div>
-
-                              <div>
-                                <p className="text-sm font-medium text-gray-700 mb-2">Did this start after taking any new medication?</p>
-                                <div className="flex flex-col gap-3">
-                                  <button type="button" onClick={() => handleOptionChange('newMedication','yes')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.newMedication==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
-                                  <button type="button" onClick={() => handleOptionChange('newMedication','no')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.newMedication==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
-                                </div>
-                              </div>
-
-                              <div>
-                                <p className="text-sm font-medium text-gray-700 mb-2">Do you have a family history of skin diseases?</p>
-                                <div className="flex flex-col gap-3">
-                                  <button type="button" onClick={() => handleOptionChange('familyHistory','yes')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.familyHistory==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
-                                  <button type="button" onClick={() => handleOptionChange('familyHistory','no')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.familyHistory==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
-                                  <button type="button" onClick={() => handleOptionChange('familyHistory','not_sure')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.familyHistory==='not_sure' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Not sure</button>
-                                </div>
-                              </div>
-
-                              <div>
-                                <p className="text-sm font-medium text-gray-700 mb-2">Do you experience stress or hormonal imbalance?</p>
-                                <div className="flex flex-col gap-3">
-                                  <button type="button" onClick={() => handleOptionChange('stress','yes')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.stress==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
-                                  <button type="button" onClick={() => handleOptionChange('stress','no')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.stress==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
-                                </div>
-                              </div>
+                            <p className="text-sm font-medium text-gray-700 mb-2">Family history of skin diseases?</p>
+                            <div className="flex flex-col gap-3">
+                              <button type="button" onClick={() => handleOptionChange('familyHistory','yes')} className={`w-full py-3 px-4 rounded-lg ${formData.familyHistory==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
+                              <button type="button" onClick={() => handleOptionChange('familyHistory','no')} className={`w-full py-3 px-4 rounded-lg ${formData.familyHistory==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
                             </div>
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        {/* Step 4: Oozing & severity */}
-                        {step === 4 && (
+                      {/* Step 4: Severity */}
+                      {step === 4 && (
+                        <div className="space-y-4">
                           <div>
-                            <div className="mb-4">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Does the affected area ooze, bleed, or have blisters?</p>
-                              <div className="flex flex-col gap-3">
-                                  <button type="button" onClick={() => handleOptionChange('oozing','yes')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.oozing==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
-                                  <button type="button" onClick={() => handleOptionChange('oozing','no')} className={`w-full text-left py-3 px-4 rounded-lg ${formData.oozing==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
-                                </div>
-                            </div>
-
-                            <div>
-                              <p className="text-sm font-medium text-gray-700 mb-2">How severe is it currently?</p>
-                              <div className="flex flex-col gap-3">
-                                {['mild','moderate','severe'].map(s => (
-                                  <button key={s} type="button" onClick={() => setFormData({...formData, severity: s})} className={`w-full text-left py-3 px-4 rounded-lg ${formData.severity===s ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>{s.charAt(0).toUpperCase()+s.slice(1)}</button>
-                                ))}
-                              </div>
+                            <p className="text-sm font-medium text-gray-700 mb-2">Does it ooze, bleed, or have blisters?</p>
+                            <div className="flex flex-col gap-3">
+                              <button type="button" onClick={() => handleOptionChange('oozing','yes')} className={`w-full py-3 px-4 rounded-lg ${formData.oozing==='yes' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>Yes</button>
+                              <button type="button" onClick={() => handleOptionChange('oozing','no')} className={`w-full py-3 px-4 rounded-lg ${formData.oozing==='no' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}`}>No</button>
                             </div>
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        {/* Navigation */}
-                        <div className="mt-6 flex items-center justify-between">
-                          <button type="button" onClick={() => setStep(Math.max(1, step-1))} className="px-4 py-2 rounded-lg bg-gray-100">Back</button>
-                          <div>
-                            {step < 4 ? (
-                              <button type="button" onClick={() => setStep(step+1)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">Next</button>
-                            ) : (
-                              <button type="button" onClick={() => setStep(1)} className="px-4 py-2 rounded-lg bg-green-600 text-white">Done</button>
-                            )}
-                          </div>
+                      {/* Navigation */}
+                      <div className="mt-6 flex items-center justify-between">
+                        <button type="button" onClick={() => setStep(Math.max(1, step-1))} disabled={step === 1} className="px-4 py-2 rounded-lg bg-gray-100 disabled:opacity-50">Back</button>
+                        <div>
+                          {step < 4 ? (
+                            <button type="button" onClick={() => setStep(step+1)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">Next</button>
+                          ) : (
+                            <button type="button" onClick={() => setStep(1)} className="px-4 py-2 rounded-lg bg-green-600 text-white">Done</button>
+                          )}
                         </div>
                       </div>
                     </div>
+                    
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, image: null, imagePreview: null })}
@@ -451,41 +429,10 @@ function SkinDiseaseForm() {
               <div>
                 <p className="text-sm text-indigo-900 font-semibold mb-1">Important Information</p>
                 <p className="text-sm text-indigo-800 leading-relaxed">
-                  This tool is for informational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment.
+                  This tool is for informational purposes only and is not a substitute for professional medical advice.
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Features Section */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl p-5 shadow-lg border border-blue-100">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-gray-800 mb-1">Fast Analysis</h3>
-            <p className="text-sm text-gray-600">Get results in seconds</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 shadow-lg border border-indigo-100">
-            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-gray-800 mb-1">Secure & Private</h3>
-            <p className="text-sm text-gray-600">Your data is protected</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 shadow-lg border border-purple-100">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-gray-800 mb-1">Machine Learning</h3>
-            <p className="text-sm text-gray-600">Advanced technology</p>
           </div>
         </div>
       </div>
