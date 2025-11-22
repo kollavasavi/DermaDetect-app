@@ -27,31 +27,29 @@ function Results() {
   const [debugInfo, setDebugInfo] = useState(null);
   const [saved, setSaved] = useState(false);
   
-  // Use ref to track if we've already saved this result
   const hasSavedRef = useRef(false);
 
   useEffect(() => {
     if (location.state?.result) {
-      console.log('Received result:', location.state.result);
+      console.log('📥 Received result in Results page:', location.state.result);
       setResult(location.state.result);
       
-      // Save to local history (only once and only if not from history view)
+      // Save to local history
       if (!location.state?.fromHistory && !hasSavedRef.current) {
         const historyItem = saveToHistory(location.state.result);
         if (historyItem) {
           setSaved(true);
-          hasSavedRef.current = true; // Mark as saved
+          hasSavedRef.current = true;
           console.log('✅ Analysis saved to local history');
         }
       }
       
-      // Automatically fetch advice when results load
+      // Automatically fetch advice
       fetchAdvice(location.state.result);
     } else {
       navigate('/form');
     }
     
-    // Reset the saved flag when component unmounts
     return () => {
       hasSavedRef.current = false;
     };
@@ -62,17 +60,22 @@ function Results() {
     setError('');
     setDebugInfo(null);
     try {
-      // Handle both flat and nested response structures
+      // Extract disease from multiple possible locations
       const disease = predictionResult.disease || 
-                     predictionResult.prediction?.disease || 
-                     predictionResult.prediction;
+                     predictionResult.prediction || 
+                     predictionResult.prediction?.disease;
       
-      console.log('Fetching advice for disease:', disease);
+      console.log('🔍 Extracted disease for LLM:', disease);
+      
+      if (!disease) {
+        setError('Disease information not found in results');
+        return;
+      }
       
       const response = await llmAPI.getAdvice(
         disease,
         predictionResult.metadata?.symptoms || predictionResult.symptoms || '',
-        predictionResult.predictionId || predictionResult.prediction?.predictionId || 'unknown',
+        predictionResult.predictionId || 'unknown',
         predictionResult.metadata?.severity || predictionResult.severity || 'moderate',
         predictionResult.metadata?.duration || predictionResult.duration || ''
       );
@@ -81,7 +84,7 @@ function Results() {
         setAdvice(response.data.advice);
       }
     } catch (err) {
-      console.error('Error fetching advice:', err);
+      console.error('❌ Error fetching advice:', err);
       if (err.response) {
         const msg = err.response.data?.message || err.response.data?.error || JSON.stringify(err.response.data);
         setError(`Failed to load treatment advice: ${msg}`);
@@ -133,11 +136,21 @@ function Results() {
     );
   }
 
-  // Handle different response structures
-  const prediction = result.prediction || result;
-  const disease = prediction.disease || prediction.prediction || prediction;
-  const confidence = prediction.confidence || 0;
+  // CRITICAL FIX: Extract data correctly from result object
+  console.log('🔍 Processing result object:', result);
+  
+  // The disease name can be at multiple levels
+  const disease = result.disease || result.prediction;
+  
+  // The confidence can also be at multiple levels
+  const confidence = result.confidence || 0;
+  
+  // Get metadata
   const metadata = result.metadata || {};
+  
+  console.log('✅ Extracted disease:', disease);
+  console.log('✅ Extracted confidence:', confidence);
+  console.log('✅ Extracted metadata:', metadata);
   
   const badge = getSeverityBadge(confidence);
 
@@ -176,7 +189,7 @@ function Results() {
           {/* Prediction */}
           <div className="border-l-4 border-blue-500 pl-6 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 py-4 rounded-r-xl">
             <p className="text-sm text-gray-600 font-medium mb-1">Detected Condition</p>
-            <h2 className="text-3xl font-bold text-gray-800">{disease}</h2>
+            <h2 className="text-3xl font-bold text-gray-800">{disease || 'Unknown'}</h2>
           </div>
 
           {/* Confidence Badge */}
