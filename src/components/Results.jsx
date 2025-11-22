@@ -110,14 +110,16 @@ function Results() {
   };
 
   const getSeverityColor = (confidence) => {
-    if (confidence >= 80) return 'text-green-600';
-    if (confidence >= 60) return 'text-yellow-600';
+    const conf = Number(confidence) || 0;
+    if (conf >= 80) return 'text-green-600';
+    if (conf >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
 
   const getSeverityBadge = (confidence) => {
-    if (confidence >= 80) return { text: 'High Confidence', color: 'bg-green-100 text-green-800' };
-    if (confidence >= 60) return { text: 'Moderate Confidence', color: 'bg-yellow-100 text-yellow-800' };
+    const conf = Number(confidence) || 0;
+    if (conf >= 80) return { text: 'High Confidence', color: 'bg-green-100 text-green-800' };
+    if (conf >= 60) return { text: 'Moderate Confidence', color: 'bg-yellow-100 text-yellow-800' };
     return { text: 'Low Confidence', color: 'bg-red-100 text-red-800' };
   };
 
@@ -132,19 +134,23 @@ function Results() {
     );
   }
 
-  // Extract data with detailed logging
+  // CRITICAL FIX: Extract and convert confidence properly
   console.log('🔍 Full result object:', JSON.stringify(result, null, 2));
   
   const disease = result.disease || result.prediction;
-  const confidence = Number(result.confidence || 0);
+  // Convert confidence to number and ensure it's valid
+  const rawConfidence = result.confidence ?? 0;
+  const confidence = Number(rawConfidence);
+  const displayConfidence = isNaN(confidence) ? 0 : confidence;
   const metadata = result.metadata || {};
   
   console.log('✅ Extracted disease:', disease);
-  console.log('✅ Extracted confidence (raw):', result.confidence);
-  console.log('✅ Extracted confidence (converted):', confidence);
-  console.log('✅ Type of confidence:', typeof confidence);
+  console.log('✅ Raw confidence:', rawConfidence);
+  console.log('✅ Converted confidence:', confidence);
+  console.log('✅ Display confidence:', displayConfidence);
+  console.log('✅ Is NaN?:', isNaN(confidence));
   
-  const badge = getSeverityBadge(confidence);
+  const badge = getSeverityBadge(displayConfidence);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
@@ -206,14 +212,14 @@ function Results() {
                     strokeWidth="8"
                     fill="none"
                     strokeDasharray={`${2 * Math.PI * 40}`}
-                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - confidence / 100)}`}
-                    className={getSeverityColor(confidence)}
+                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - displayConfidence / 100)}`}
+                    className={getSeverityColor(displayConfidence)}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-xl font-bold ${getSeverityColor(confidence)}`}>
-                    {Math.round(confidence)}%
+                  <span className={`text-xl font-bold ${getSeverityColor(displayConfidence)}`}>
+                    {Math.round(displayConfidence)}%
                   </span>
                 </div>
               </div>
