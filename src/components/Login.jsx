@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// FIXED: Use VITE_API_URL instead of REACT_APP_API_URL
-const API_BASE = import.meta.env.VITE_API_URL || 'https://dermadetect-backend-production.up.railway.app';
-
-console.log('🔗 Using API URL:', API_BASE); // Debug log
+// Hardcoded Railway URL - safe fallback
+const API_BASE = 'https://dermadetect-backend-production.up.railway.app';
+console.log('🔗 Using API URL:', API_BASE);
 
 function Login() {
   const [isSignup, setIsSignup] = useState(false);
@@ -32,7 +31,7 @@ function Login() {
     try {
       const endpoint = isSignup ? `${API_BASE}/api/auth/signup` : `${API_BASE}/api/auth/login`;
       
-      console.log('📡 Sending request to:', endpoint); // Debug log
+      console.log('📡 Sending request to:', endpoint);
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -43,7 +42,7 @@ function Login() {
       });
 
       const data = await response.json();
-      console.log('📥 Response:', data); // Debug log
+      console.log('📥 Response:', data);
 
       if (response.ok && data.success) {
         if (data.token) {
@@ -230,5 +229,3 @@ const styles = {
 };
 
 export default Login;
-
-
