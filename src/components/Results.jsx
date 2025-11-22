@@ -62,12 +62,19 @@ function Results() {
     setError('');
     setDebugInfo(null);
     try {
+      // Handle both flat and nested response structures
+      const disease = predictionResult.disease || 
+                     predictionResult.prediction?.disease || 
+                     predictionResult.prediction;
+      
+      console.log('Fetching advice for disease:', disease);
+      
       const response = await llmAPI.getAdvice(
-        predictionResult.prediction.disease,
-        predictionResult.metadata?.symptoms || '',
-        predictionResult.prediction.predictionId,
-        predictionResult.metadata?.severity || 'moderate',
-        predictionResult.metadata?.duration || ''
+        disease,
+        predictionResult.metadata?.symptoms || predictionResult.symptoms || '',
+        predictionResult.predictionId || predictionResult.prediction?.predictionId || 'unknown',
+        predictionResult.metadata?.severity || predictionResult.severity || 'moderate',
+        predictionResult.metadata?.duration || predictionResult.duration || ''
       );
 
       if (response.data.success) {
@@ -126,8 +133,13 @@ function Results() {
     );
   }
 
-  const { prediction, metadata } = result;
-  const badge = getSeverityBadge(prediction.confidence);
+  // Handle different response structures
+  const prediction = result.prediction || result;
+  const disease = prediction.disease || prediction.prediction || prediction;
+  const confidence = prediction.confidence || 0;
+  const metadata = result.metadata || {};
+  
+  const badge = getSeverityBadge(confidence);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
@@ -164,7 +176,7 @@ function Results() {
           {/* Prediction */}
           <div className="border-l-4 border-blue-500 pl-6 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 py-4 rounded-r-xl">
             <p className="text-sm text-gray-600 font-medium mb-1">Detected Condition</p>
-            <h2 className="text-3xl font-bold text-gray-800">{prediction.disease}</h2>
+            <h2 className="text-3xl font-bold text-gray-800">{disease}</h2>
           </div>
 
           {/* Confidence Badge */}
@@ -192,14 +204,14 @@ function Results() {
                     strokeWidth="8"
                     fill="none"
                     strokeDasharray={`${2 * Math.PI * 40}`}
-                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - prediction.confidence / 100)}`}
-                    className={getSeverityColor(prediction.confidence)}
+                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - confidence / 100)}`}
+                    className={getSeverityColor(confidence)}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-xl font-bold ${getSeverityColor(prediction.confidence)}`}>
-                    {prediction.confidence}%
+                  <span className={`text-xl font-bold ${getSeverityColor(confidence)}`}>
+                    {confidence}%
                   </span>
                 </div>
               </div>
@@ -207,7 +219,7 @@ function Results() {
           </div>
 
           {/* Metadata */}
-          {metadata && (
+          {(metadata.symptoms || metadata.duration || metadata.severity) && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {metadata.symptoms && (
