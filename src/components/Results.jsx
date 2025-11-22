@@ -5,7 +5,6 @@ import { saveToHistory } from '../utils/historyUtils';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
-// Configure marked for better rendering
 marked.setOptions({
   breaks: true,
   gfm: true,
@@ -34,7 +33,6 @@ function Results() {
       console.log('📥 Received result in Results page:', location.state.result);
       setResult(location.state.result);
       
-      // Save to local history
       if (!location.state?.fromHistory && !hasSavedRef.current) {
         const historyItem = saveToHistory(location.state.result);
         if (historyItem) {
@@ -44,7 +42,6 @@ function Results() {
         }
       }
       
-      // Automatically fetch advice
       fetchAdvice(location.state.result);
     } else {
       navigate('/form');
@@ -60,7 +57,6 @@ function Results() {
     setError('');
     setDebugInfo(null);
     try {
-      // Extract disease from multiple possible locations
       const disease = predictionResult.disease || 
                      predictionResult.prediction || 
                      predictionResult.prediction?.disease;
@@ -136,28 +132,23 @@ function Results() {
     );
   }
 
-  // CRITICAL FIX: Extract data correctly from result object
-  console.log('🔍 Processing result object:', result);
+  // Extract data with detailed logging
+  console.log('🔍 Full result object:', JSON.stringify(result, null, 2));
   
-  // The disease name can be at multiple levels
   const disease = result.disease || result.prediction;
-  
-  // The confidence can also be at multiple levels
-  const confidence = result.confidence || 0;
-  
-  // Get metadata
+  const confidence = Number(result.confidence || 0);
   const metadata = result.metadata || {};
   
   console.log('✅ Extracted disease:', disease);
-  console.log('✅ Extracted confidence:', confidence);
-  console.log('✅ Extracted metadata:', metadata);
+  console.log('✅ Extracted confidence (raw):', result.confidence);
+  console.log('✅ Extracted confidence (converted):', confidence);
+  console.log('✅ Type of confidence:', typeof confidence);
   
   const badge = getSeverityBadge(confidence);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 border border-indigo-100">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -186,13 +177,11 @@ function Results() {
             </button>
           </div>
           
-          {/* Prediction */}
           <div className="border-l-4 border-blue-500 pl-6 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 py-4 rounded-r-xl">
             <p className="text-sm text-gray-600 font-medium mb-1">Detected Condition</p>
             <h2 className="text-3xl font-bold text-gray-800">{disease || 'Unknown'}</h2>
           </div>
 
-          {/* Confidence Badge */}
           <div className="flex items-center gap-4 mb-6">
             <span className={`px-5 py-2.5 rounded-full text-sm font-semibold shadow-md ${badge.color}`}>
               {badge.text}
@@ -224,14 +213,13 @@ function Results() {
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className={`text-xl font-bold ${getSeverityColor(confidence)}`}>
-                    {confidence}%
+                    {Math.round(confidence)}%
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Metadata */}
           {(metadata.symptoms || metadata.duration || metadata.severity) && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -273,7 +261,6 @@ function Results() {
           )}
         </div>
 
-        {/* AI-Generated Advice Section */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 border border-indigo-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -317,7 +304,7 @@ function Results() {
                     onClick={runLLMDebug}
                     className="mt-3 ml-3 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium text-sm"
                   >
-                    Test LLM (public debug)
+                    Test LLM
                   </button>
                   {debugInfo && (
                     <pre className="mt-3 p-3 bg-gray-100 rounded-md text-sm overflow-auto">{JSON.stringify(debugInfo, null, 2)}</pre>
@@ -335,8 +322,7 @@ function Results() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="text-sm text-indigo-800 leading-relaxed">
-                    <strong>Important:</strong> This advice is generated using medical knowledge databases and AI assistance.
-                    Always consult a healthcare professional for diagnosis and treatment.
+                    <strong>Important:</strong> This advice is AI-generated. Always consult a healthcare professional.
                   </p>
                 </div>
               </div>
@@ -357,7 +343,6 @@ function Results() {
           )}
         </div>
 
-        {/* Warning Section */}
         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500 rounded-r-2xl p-6 shadow-lg mb-6">
           <div className="flex gap-4">
             <div className="flex-shrink-0">
@@ -370,15 +355,12 @@ function Results() {
             <div>
               <h3 className="font-bold text-yellow-900 mb-2 text-lg">⚠️ Important Medical Disclaimer</h3>
               <p className="text-yellow-800 text-sm leading-relaxed">
-                This AI-powered analysis is for <strong>informational purposes only</strong> and should not be considered 
-                a medical diagnosis. Always consult with a <strong>qualified healthcare professional or dermatologist</strong> 
-                for proper evaluation, diagnosis, and treatment of any skin condition.
+                This AI-powered analysis is for <strong>informational purposes only</strong>. Always consult a <strong>qualified healthcare professional</strong> for proper diagnosis and treatment.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={() => navigate('/history')}
@@ -401,7 +383,6 @@ function Results() {
         </div>
       </div>
 
-      {/* Enhanced CSS for Medical Advice */}
       <style jsx>{`
         .medical-advice-content {
           line-height: 1.8;
@@ -413,158 +394,29 @@ function Results() {
           box-shadow: 0 1px 3px rgba(0,0,0,0.08);
           border: 1px solid #e5e7eb;
         }
-
         .medical-advice-content h1,
         .medical-advice-content h2 {
           font-size: 1.75rem;
           font-weight: 800;
-          color: #1e3a8a;
           margin-top: 2.5rem;
           margin-bottom: 1.5rem;
           padding: 1rem 1.25rem;
           background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
           color: white;
-          border-left: 6px solid #1e40af;
           border-radius: 0.75rem;
-          display: block;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-          text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        .medical-advice-content h1:first-child,
-        .medical-advice-content h2:first-child {
-          margin-top: 0;
-        }
-
-        .medical-advice-content h3 {
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: #1f2937;
-          margin-top: 1.5rem;
-          margin-bottom: 0.75rem;
-          padding-left: 0.5rem;
-          border-left: 3px solid #6366f1;
-        }
-
-        .medical-advice-content p {
-          margin-top: 0.75rem;
-          margin-bottom: 0.75rem;
-          color: #4b5563;
-          line-height: 1.8;
-        }
-
-        .medical-advice-content ul {
-          margin-top: 1rem;
-          margin-bottom: 1rem;
-          padding-left: 0;
-          list-style: none;
-        }
-
         .medical-advice-content li {
-          margin-top: 0.75rem;
-          margin-bottom: 0.75rem;
-          padding-left: 2rem;
+          margin: 0.75rem 0;
+          padding-left: 2.5rem;
           position: relative;
-          color: #374151;
-          line-height: 1.75;
-          background: white;
-          padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-
         .medical-advice-content li:before {
           content: "✓";
           position: absolute;
           left: 0.75rem;
           color: #10b981;
           font-weight: bold;
-          font-size: 1.2rem;
-          top: 0.75rem;
-        }
-
-        .medical-advice-content ul ul {
-          margin-top: 0.5rem;
-          margin-bottom: 0.5rem;
-          margin-left: 1rem;
-        }
-
-        .medical-advice-content ul ul li:before {
-          content: "→";
-          color: #6366f1;
-          font-size: 1rem;
-        }
-
-        .medical-advice-content strong {
-          font-weight: 600;
-          color: #1f2937;
-        }
-
-        .medical-advice-content em {
-          font-style: italic;
-          color: #6366f1;
-        }
-
-        .medical-advice-content code {
-          background-color: #f3f4f6;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
-          font-family: 'Courier New', monospace;
-          font-size: 0.9rem;
-          color: #dc2626;
-        }
-
-        .medical-advice-content blockquote {
-          border-left: 4px solid #3b82f6;
-          background-color: #f0f9ff;
-          padding: 1rem;
-          margin: 1rem 0;
-          border-radius: 0.5rem;
-          color: #1e3a8a;
-          font-style: italic;
-        }
-
-        .medical-advice-content p:last-child {
-          background: white;
-          border-left: none;
-          padding: 0;
-          border-radius: 0;
-          margin-top: 1rem;
-          font-size: 1rem;
-          color: #4b5563;
-          box-shadow: none;
-        }
-
-        .medical-advice-content hr {
-          border: none;
-          border-top: 2px solid #e5e7eb;
-          margin: 2rem 0;
-        }
-
-        @media (max-width: 640px) {
-          .medical-advice-content {
-            padding: 1.5rem;
-          }
-          
-          .medical-advice-content h1,
-          .medical-advice-content h2 {
-            font-size: 1.25rem;
-            padding: 0.5rem 0.75rem;
-          }
-          
-          .medical-advice-content h3 {
-            font-size: 1.1rem;
-          }
-          
-          .medical-advice-content {
-            font-size: 0.95rem;
-          }
-          
-          .medical-advice-content li {
-            padding: 0.5rem 0.5rem 0.5rem 2rem;
-          }
         }
       `}</style>
     </div>
