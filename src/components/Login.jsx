@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Hardcoded Railway URL - safe fallback
-const API_BASE = 'https://dermadetect-backend-production.up.railway.app';
+// Get API URL from environment variable
+const API_BASE = import.meta?.env?.VITE_API_URL || 'https://dermadetect-backend-production.up.railway.app';
 console.log('🔗 Using API URL:', API_BASE);
+
 
 function Login() {
   const [isSignup, setIsSignup] = useState(false);
@@ -229,3 +230,4 @@ const styles = {
 };
 
 export default Login;
+
