@@ -230,17 +230,5 @@ const styles = {
 };
 
 export default Login;
-```
 
-## 🎯 Main Changes:
-1. Changed `process.env.REACT_APP_API_URL` to `import.meta.env.VITE_API_URL`
-2. Removed the complex `computeApiBase` function
-3. Added hardcoded fallback to your Railway URL
-4. Added console logs for debugging
 
-## 📝 Steps:
-
-1. **Replace your `Login.jsx`** with the code above
-2. **Make sure your `.env` file has:**
-```
-   VITE_API_URL=https://dermadetect-backend-production.up.railway.app
