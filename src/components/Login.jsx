@@ -1,20 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Compute API base at runtime
-const computeApiBase = () => {
-  const envUrl = process.env.REACT_APP_API_URL || '';
-  if (envUrl && !envUrl.includes('192.168.54.') && !envUrl.includes('backend.loca.lt')) {
-    return envUrl;
-  }
-  if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    const origin = window.location.origin;
-    if (origin && !origin.includes('localhost')) return origin;
-  }
-  return 'http://localhost:5000';
-};
+// FIXED: Use VITE_API_URL instead of REACT_APP_API_URL
+const API_BASE = import.meta.env.VITE_API_URL || 'https://dermadetect-backend-production.up.railway.app';
 
-const API_BASE = computeApiBase();
+console.log('🔗 Using API URL:', API_BASE); // Debug log
 
 function Login() {
   const [isSignup, setIsSignup] = useState(false);
@@ -42,6 +32,8 @@ function Login() {
     try {
       const endpoint = isSignup ? `${API_BASE}/api/auth/signup` : `${API_BASE}/api/auth/login`;
       
+      console.log('📡 Sending request to:', endpoint); // Debug log
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -51,8 +43,9 @@ function Login() {
       });
 
       const data = await response.json();
+      console.log('📥 Response:', data); // Debug log
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         if (data.token) {
           localStorage.setItem('token', data.token);
           localStorage.setItem('user', JSON.stringify(data.user || { email: formData.email }));
@@ -62,7 +55,7 @@ function Login() {
         setError(data.message || 'Authentication failed');
       }
     } catch (err) {
-      console.error('Auth error:', err);
+      console.error('❌ Auth error:', err);
       setError('Unable to connect to server. Please check your connection.');
     } finally {
       setLoading(false);
@@ -237,3 +230,17 @@ const styles = {
 };
 
 export default Login;
+```
+
+## 🎯 Main Changes:
+1. Changed `process.env.REACT_APP_API_URL` to `import.meta.env.VITE_API_URL`
+2. Removed the complex `computeApiBase` function
+3. Added hardcoded fallback to your Railway URL
+4. Added console logs for debugging
+
+## 📝 Steps:
+
+1. **Replace your `Login.jsx`** with the code above
+2. **Make sure your `.env` file has:**
+```
+   VITE_API_URL=https://dermadetect-backend-production.up.railway.app
