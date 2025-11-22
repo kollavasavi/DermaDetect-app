@@ -2,48 +2,14 @@
 import axios from "axios";
 
 // =========================================================
-// 🚀 FORCE USE API URL ONLY FROM .env (backend base URL)
+// 🚀 API URL Configuration
 // =========================================================
 
-// Prefer explicit env var, otherwise assume the same host serving the frontend
-let API_URL = process.env.REACT_APP_API_URL || '';
-// If an old hard-coded LAN IP or known legacy host is present in env, ignore it
-if (API_URL && (API_URL.includes('192.168.54.') || API_URL.includes('backend.loca.lt'))) {
-  console.warn('Ignoring legacy REACT_APP_API_URL:', API_URL);
-  API_URL = '';
-}
-
-if (!API_URL) {
-  if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    // Prefer same-origin (protocol + host + port) so when the frontend is
-    // served via a tunnel (https://...) the API calls go to the same origin.
-    // Fall back to localhost:5000 for local development.
-    try {
-      const origin = window.location.origin;
-      if (origin && !origin.includes('localhost')) {
-        try {
-          const u = new URL(origin);
-          // If frontend is served from a different port (e.g. 8000), map to port 5002 on same host
-          if (u.port && u.port !== '5000') {
-            API_URL = `${u.protocol}//${u.hostname}:5000`;
-          } else {
-            API_URL = origin; // e.g. https://odd-mugs-rule.loca.lt
-          }
-        } catch (e) {
-          API_URL = origin;
-        }
-      } else {
-        API_URL = 'http://localhost:5000';
-      }
-    } catch (e) {
-      API_URL = 'http://localhost:5000';
-    }
-  } else {
-    API_URL = 'http://localhost:5000';
-  }
-}
+// For Vite, use VITE_ prefix, with Railway backend as fallback
+const API_URL = import.meta?.env?.VITE_API_URL || 'https://dermadetect-backend-production.up.railway.app';
 
 console.log("🔗 USING API URL:", API_URL);
+
 const api = axios.create({
   baseURL: API_URL,
 });
@@ -79,7 +45,6 @@ api.interceptors.response.use(
 // 🔐 AUTH APIs
 // =========================================================
 export const authAPI = {
-  // Backend mounts auth routes under /api/auth
   login: (email, password) => api.post("/api/auth/login", { email, password }),
   register: (userData) => api.post("/api/auth/register", userData),
   logout: () => {
@@ -92,7 +57,6 @@ export const authAPI = {
 // 👤 USER APIs
 // =========================================================
 export const userAPI = {
-  // Backend mounts user routes under /api/user
   getProfile: () => api.get("/api/user/profile"),
   updateProfile: (data) => api.put("/api/user/profile", data),
   getHistory: () => api.get("/api/user/history"),
@@ -110,7 +74,7 @@ export const predictionAPI = {
 };
 
 // =========================================================
-// 🧠 LLM APIs (note: backend mounts these under /api/llm)
+// 🧠 LLM APIs
 // =========================================================
 export const llmAPI = {
   getAdvice: (disease, symptoms, id, severity = "moderate", duration = "") =>
