@@ -1,26 +1,36 @@
 // frontend/src/config.js
 
-// Your Railway backend URL
+// Railway backend for auth, history, llm etc.
 const API_BASE = "https://dermadetect-backend-production.up.railway.app";
+
+// HuggingFace backend for ML predictions
+const HF_PREDICT = "https://vasavi07-dermadetect-ml-model.hf.space";
 
 const join = (base, path) => {
   return `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
 };
 
 export const API_ENDPOINTS = {
-  SIGNUP: join(API_BASE, '/api/auth/signup'),
+  // Auth
+  SIGNUP: join(API_BASE, '/api/auth/register'),
   LOGIN: join(API_BASE, '/api/auth/login'),
-  
+
+  // Users
   PROFILE: join(API_BASE, '/api/user/profile'),
   HISTORY: join(API_BASE, '/api/user/history'),
 
-  PREDICT: join(API_BASE, '/api/predict'),
-  PERFORMANCE: join(API_BASE, '/api/performance'),
+  // PREDICTION (coming from HuggingFace)
+  PREDICT: join(HF_PREDICT, '/api/predict'),
 
+  // Misc endpoints
+  PERFORMANCE: join(API_BASE, '/api/performance'),
   LLM_ADVICE: join(API_BASE, '/api/llm/advice'),
-  HEALTH: join(API_BASE, '/api/health'),
+
+  // HEALTH check for ML
+  HEALTH: join(HF_PREDICT, '/api/health'),
 };
 
+// Generic API call (JSON)
 export const apiCall = async (endpoint, options = {}) => {
   try {
     const response = await fetch(endpoint, {
@@ -42,15 +52,18 @@ export const apiCall = async (endpoint, options = {}) => {
   }
 };
 
+// Image Upload / Prediction
 export const uploadImage = async (file, additionalData = {}) => {
   try {
     const formData = new FormData();
     formData.append('image', file);
 
+    // Add extra fields from form if any
     Object.keys(additionalData).forEach(key => {
       formData.append(key, additionalData[key]);
     });
 
+    // IMPORTANT: Use HuggingFace for prediction
     const response = await fetch(API_ENDPOINTS.PREDICT, {
       method: 'POST',
       body: formData,
