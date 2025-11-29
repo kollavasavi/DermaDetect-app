@@ -23,9 +23,7 @@ function Results() {
   const [advice, setAdvice] = useState('');
   const [loadingAdvice, setLoadingAdvice] = useState(false);
   const [error, setError] = useState('');
-  const [debugInfo, setDebugInfo] = useState(null);
   const [saved, setSaved] = useState(false);
-
   const hasSavedRef = useRef(false);
 
   /*****************************************
@@ -34,11 +32,10 @@ function Results() {
   useEffect(() => {
     if (location.state?.result) {
       const r = location.state.result;
-      console.log("📥 Received:", r);
       setResult(r);
 
-      // Save only once
       if (!location.state?.fromHistory && !hasSavedRef.current) {
+        // CONFIDENCE FIX
         let raw = Number(r.confidence) || 0;
         let finalConfidence = raw <= 1 ? raw * 100 : raw;
         finalConfidence = Math.round(finalConfidence);
@@ -52,13 +49,9 @@ function Results() {
           model_details: r.model_details || {},
         };
 
-        console.log("📦 Saving to history:", formatted);
-
-        const savedItem = saveToHistory(formatted);
-        if (savedItem) {
-          hasSavedRef.current = true;
-          setSaved(true);
-        }
+        saveToHistory(formatted);
+        hasSavedRef.current = true;
+        setSaved(true);
       }
 
       fetchAdvice(r);
@@ -66,17 +59,16 @@ function Results() {
       navigate('/form');
     }
 
-    return () => {
-      hasSavedRef.current = false;
-    };
+    return () => { hasSavedRef.current = false; };
   }, [location.state, navigate]);
 
   /*****************************************
-   * FETCH ADVICE
+   * FETCH MEDICAL ADVICE
    *****************************************/
   const fetchAdvice = async (predictionResult) => {
     setLoadingAdvice(true);
     setError('');
+
     try {
       const disease =
         predictionResult.disease ||
@@ -88,7 +80,7 @@ function Results() {
         return;
       }
 
-      const response = await llmAPI.getAdvice(
+      const resp = await llmAPI.getAdvice(
         disease,
         predictionResult.metadata?.symptoms || '',
         predictionResult.predictionId || 'unknown',
@@ -96,51 +88,31 @@ function Results() {
         predictionResult.metadata?.duration || ''
       );
 
-      if (response.data.success) {
-        setAdvice(response.data.advice);
-      }
+      if (resp.data.success) setAdvice(resp.data.advice);
     } catch (err) {
-      console.error("❌ Advice error:", err);
       setError("Failed to load medical advice.");
-    } finally {
-      setLoadingAdvice(false);
     }
-  };
 
-  const runLLMDebug = async () => {
-    try {
-      const resp = await llmAPI.debug();
-      setDebugInfo(resp.data);
-    } catch (err) {
-      setDebugInfo({ error: err.message });
-    }
+    setLoadingAdvice(false);
   };
 
   /*****************************************
    * UI HELPERS
    *****************************************/
-  const getSeverityColor = (conf) => {
-    if (conf >= 80) return "text-green-600";
-    if (conf >= 60) return "text-yellow-600";
-    return "text-red-600";
-  };
+  const getSeverityColor = (c) =>
+    c >= 80 ? "text-green-600" :
+    c >= 60 ? "text-yellow-600" :
+              "text-red-600";
 
-  const getSeverityBadge = (conf) => {
-    if (conf >= 80) return { text: "High Confidence", color: "bg-green-100 text-green-800" };
-    if (conf >= 60) return { text: "Moderate Confidence", color: "bg-yellow-100 text-yellow-800" };
-    return { text: "Low Confidence", color: "bg-red-100 text-red-800" };
-  };
+  const getSeverityBadge = (c) =>
+    c >= 80 ? { text: "High Confidence", color: "bg-green-100 text-green-800" } :
+    c >= 60 ? { text: "Moderate Confidence", color: "bg-yellow-100 text-yellow-800" } :
+              { text: "Low Confidence", color: "bg-red-100 text-red-800" };
 
-  if (!result) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading results...
-      </div>
-    );
-  }
+  if (!result) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   /*****************************************
-   * CONFIDENCE FIX (DISPLAY)
+   * CONFIDENCE FORMAT (DISPLAY)
    *****************************************/
   let raw = Number(result.confidence) || 0;
   let finalConfidence = raw <= 1 ? raw * 100 : raw;
@@ -161,20 +133,16 @@ function Results() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
                 Analysis Results
               </h1>
-              {saved && (
-                <p className="text-green-600 text-sm mt-1">✔ Saved to history</p>
-              )}
+              {saved && <p className="text-green-600 text-sm mt-1">✔ Saved to history</p>}
             </div>
 
-            <button
-              onClick={() => navigate('/form')}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-xl"
-            >
+            <button onClick={() => navigate('/form')}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-xl">
               New Analysis
             </button>
           </div>
 
-          {/* Condition */}
+          {/* Detected Condition */}
           <div className="border-l-4 border-blue-500 pl-6 mb-6 bg-blue-50 py-4 rounded-r-xl">
             <p className="text-sm text-gray-600">Detected Condition</p>
             <h2 className="text-3xl font-bold">{disease}</h2>
@@ -188,7 +156,7 @@ function Results() {
 
             <div className="relative w-24 h-24">
               <svg className="transform -rotate-90 w-24 h-24">
-                <circle cx="48" cy="48" r="40" strokeWidth="8" className="text-gray-200" fill="none" />
+                <circle cx="48" cy="48" r="40" strokeWidth="8" fill="none" className="text-gray-200" />
                 <circle
                   cx="48"
                   cy="48"
@@ -230,28 +198,16 @@ function Results() {
           )}
         </div>
 
-        {/* Advice */}
+        {/* Medical Advice */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 border">
           {loadingAdvice && <p>Loading medical advice...</p>}
-
-          {error && (
-            <div className="text-red-600 mb-4">
-              {error}
-              <button onClick={() => fetchAdvice(result)} className="ml-3 underline">
-                Try Again
-              </button>
-            </div>
-          )}
-
-          {advice && (
-            <div dangerouslySetInnerHTML={{ __html: renderMarkdownSafe(advice) }} />
-          )}
+          {error && <p className="text-red-600">{error}</p>}
+          {advice && <div dangerouslySetInnerHTML={{ __html: renderMarkdownSafe(advice) }} />}
         </div>
 
-        <button
-          onClick={() => navigate('/history')}
-          className="w-full py-4 bg-gray-100 rounded-xl border font-semibold"
-        >
+        {/* View History */}
+        <button onClick={() => navigate('/history')}
+          className="w-full py-4 bg-gray-100 rounded-xl border font-semibold">
           View History
         </button>
       </div>
