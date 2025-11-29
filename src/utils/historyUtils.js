@@ -1,15 +1,20 @@
 // historyUtils.js
-// FINAL COMPLETE WORKING VERSION ✔
+// FINAL FULLY FIXED VERSION ✔
 
 const HISTORY_KEY = "analysisHistory";
 
 /****************************
- * NORMALIZE RESULT
+ * NORMALIZE RESULT (FIXED)
  ****************************/
 const normalizeResult = (result) => {
+  // Convert confidence into whole number percentage
+  let conf = Number(result.confidence) || 0;
+  if (conf <= 1) conf = conf * 100;
+  conf = Math.round(conf);
+
   return {
     disease: result.disease || result.prediction || "Unknown",
-    confidence: Number(result.confidence) || 0,
+    confidence: conf,  // ✔ always whole number %
 
     metadata: result.metadata || {},
 
@@ -66,7 +71,7 @@ export const getHistory = () => {
 };
 
 /****************************
- * GET SINGLE HISTORY ITEM
+ * GET SINGLE ITEM
  ****************************/
 export const getHistoryItem = (id) => {
   return getHistory().find((i) => i.id === id) || null;
@@ -86,7 +91,7 @@ export const deleteHistoryItem = (id) => {
 };
 
 /****************************
- * CLEAR ALL HISTORY
+ * CLEAR ALL
  ****************************/
 export const clearHistory = () => {
   try {
@@ -98,9 +103,7 @@ export const clearHistory = () => {
 };
 
 /****************************
- * HISTORY STATS (FIXED)
- * ✔ No NaN
- * ✔ Whole numbers for avg confidence
+ * HISTORY STATS (WORKING)
  ****************************/
 export const getHistoryStats = () => {
   try {
@@ -123,7 +126,7 @@ export const getHistoryStats = () => {
     return {
       total: history.length,
       diseases,
-      avgConfidence: Math.round(totalConf / history.length), // FIXED ✔
+      avgConfidence: Math.round(totalConf / history.length), // ✔ correct whole number
     };
   } catch (err) {
     console.error("❌ Stats error:", err);
@@ -167,5 +170,5 @@ export const searchHistory = (query) => {
  * UNIQUE DISEASES
  ****************************/
 export const getUniqueDiseases = () => {
-  return [...new Set(getHistory().map((item) => item.result.disease))];
+  return [...new Set(getHistory().map((i) => i.result.disease))];
 };
