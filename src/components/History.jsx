@@ -175,7 +175,7 @@ function History() {
           </div>
         )}
 
-        {/* History List */}
+        {/* History Cards */}
         {history.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -201,10 +201,10 @@ function History() {
                   {/* LEFT SIDE */}
                   <div className="flex-1">
 
-                    {/* Disease Name + Confidence */}
+                    {/* Disease + Confidence */}
                     <div className="flex items-center gap-3 mb-3">
                       <h3 className="text-xl font-bold text-gray-800">
-                        {item.result.disease || item.result.prediction || "Unknown"}
+                        {item.result.disease || "Unknown"}
                       </h3>
 
                       <span 
@@ -217,6 +217,7 @@ function History() {
                     {/* Metadata */}
                     {item.result.metadata && (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+
                         {item.result.metadata.symptoms && (
                           <div className="text-sm">
                             <span className="text-gray-500">Symptoms:</span>
@@ -237,6 +238,7 @@ function History() {
                             <p className="text-gray-700 font-medium capitalize">{item.result.metadata.severity}</p>
                           </div>
                         )}
+
                       </div>
                     )}
 
@@ -279,7 +281,7 @@ function History() {
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     )}
