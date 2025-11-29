@@ -1,66 +1,63 @@
 // historyUtils.js
-// FIXED version — works with your SkinDiseaseForm and Results.jsx
+// FINAL FIXED VERSION ✔ Works with Results.jsx and SkinDiseaseForm.jsx
 
-const HISTORY_KEY = 'analysisHistory';
+const HISTORY_KEY = "analysisHistory";
 
-/**
- * Normalize result so History always receives:
- * result = {
- *   prediction: { disease, confidence },
- *   metadata: {...}
- * }
- */
+/****************************
+ * NORMALIZE RESULT (IMPORTANT)
+ ****************************/
 const normalizeResult = (result) => {
   return {
-    prediction: {
-      disease: result.disease || result.prediction || "Unknown",
-      confidence: Number(result.confidence) || 0,
-    },
+    disease: result.disease || result.prediction || "Unknown",
+    confidence: Number(result.confidence) || 0,
+
     metadata: result.metadata || {},
+
     all_predictions: result.all_predictions || {},
     recommendations: result.recommendations || [],
-    model_details: result.model_details || {},
+    model_details: result.model_details || {}
   };
 };
 
-/** SAVE to history */
+/****************************
+ * SAVE TO HISTORY
+ ****************************/
 export const saveToHistory = (result) => {
   try {
-    const existingHistory = getHistory();
-    
-    // Normalize before saving
+    const existing = getHistory();
+
     const normalized = normalizeResult(result);
 
-    const timestamp = Date.now();
-    const id = `${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-    const historyItem = {
+    const item = {
       id,
       timestamp: new Date().toISOString(),
-      result: normalized
+      result: normalized,
     };
 
-    const updated = [historyItem, ...existingHistory].slice(0, 50); // limit 50
+    const updated = [item, ...existing].slice(0, 50);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
 
-    console.log("✅ Saved normalized history:", historyItem);
-    return historyItem;
+    console.log("✅ Saved to history:", item);
+    return item;
   } catch (err) {
-    console.error("❌ Error saving history:", err);
+    console.error("❌ Error saving to history:", err);
     return null;
   }
 };
 
-/** GET history */
+/****************************
+ * GET ALL HISTORY
+ ****************************/
 export const getHistory = () => {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
-    const history = raw ? JSON.parse(raw) : [];
+    const arr = raw ? JSON.parse(raw) : [];
 
-    // Normalize all old records too
-    return history.map((item) => ({
+    return arr.map((item) => ({
       ...item,
-      result: normalizeResult(item.result)
+      result: normalizeResult(item.result),
     }));
   } catch (err) {
     console.error("❌ Error loading history:", err);
@@ -68,11 +65,16 @@ export const getHistory = () => {
   }
 };
 
+/****************************
+ * GET SINGLE ITEM
+ ****************************/
 export const getHistoryItem = (id) => {
   return getHistory().find((i) => i.id === id) || null;
 };
 
-/** DELETE */
+/****************************
+ * DELETE ITEM
+ ****************************/
 export const deleteHistoryItem = (id) => {
   try {
     const updated = getHistory().filter((i) => i.id !== id);
@@ -83,7 +85,9 @@ export const deleteHistoryItem = (id) => {
   }
 };
 
-/** CLEAR */
+/****************************
+ * CLEAR ALL
+ ****************************/
 export const clearHistory = () => {
   try {
     localStorage.removeItem(HISTORY_KEY);
@@ -93,63 +97,73 @@ export const clearHistory = () => {
   }
 };
 
-/** STATS — FIXED (no NaN) */
+/****************************
+ * HISTORY STATISTICS
+ ****************************/
 export const getHistoryStats = () => {
   try {
     const history = getHistory();
 
-    if (history.length === 0) {
+    if (!history.length)
       return { total: 0, diseases: {}, avgConfidence: 0 };
-    }
 
+    let totalConf = 0;
     const diseases = {};
-    let totalConfidence = 0;
 
     history.forEach((item) => {
-      const d = item.result.prediction.disease || "Unknown";
-      const c = Number(item.result.prediction.confidence) || 0;
+      const d = item.result.disease || "Unknown";
+      const c = Number(item.result.confidence) || 0;
 
       diseases[d] = (diseases[d] || 0) + 1;
-      totalConfidence += c;
+      totalConf += c;
     });
 
     return {
       total: history.length,
       diseases,
-      avgConfidence: Math.round((totalConfidence / history.length) * 10) / 10,
+      avgConfidence: Number((totalConf / history.length).toFixed(1))
     };
-  } catch {
+  } catch (err) {
+    console.error("❌ Stats error:", err);
     return { total: 0, diseases: {}, avgConfidence: 0 };
   }
 };
 
-/** EXPORT */
+/****************************
+ * EXPORT HISTORY
+ ****************************/
 export const exportHistory = (filename = "analysis-history.json") => {
-  const data = JSON.stringify(getHistory(), null, 2);
-  const blob = new Blob([data], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob([JSON.stringify(getHistory(), null, 2)], {
+    type: "application/json",
+  });
 
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
-
   URL.revokeObjectURL(url);
 };
 
-/** SEARCH */
+/****************************
+ * SEARCH HISTORY
+ ****************************/
 export const searchHistory = (query) => {
   const q = query.toLowerCase();
+
   return getHistory().filter((item) => {
     const r = item.result;
     return (
-      r.prediction.disease.toLowerCase().includes(q) ||
-      r.metadata.symptoms?.toLowerCase().includes(q)
+      r.disease?.toLowerCase().includes(q) ||
+      r.metadata?.symptoms?.toLowerCase().includes(q) ||
+      r.metadata?.duration?.toLowerCase().includes(q)
     );
   });
 };
 
-/** Unique Diseases */
+/****************************
+ * UNIQUE DISEASES
+ ****************************/
 export const getUniqueDiseases = () => {
-  return [...new Set(getHistory().map((i) => i.result.prediction.disease))];
+  return [...new Set(getHistory().map((item) => item.result.disease))];
 };
