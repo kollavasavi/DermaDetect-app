@@ -1,10 +1,10 @@
 // historyUtils.js
-// FINAL FIXED VERSION ✔ Works with Results.jsx and SkinDiseaseForm.jsx
+// FINAL COMPLETE WORKING VERSION ✔
 
 const HISTORY_KEY = "analysisHistory";
 
 /****************************
- * NORMALIZE RESULT (IMPORTANT)
+ * NORMALIZE RESULT
  ****************************/
 const normalizeResult = (result) => {
   return {
@@ -15,7 +15,7 @@ const normalizeResult = (result) => {
 
     all_predictions: result.all_predictions || {},
     recommendations: result.recommendations || [],
-    model_details: result.model_details || {}
+    model_details: result.model_details || {},
   };
 };
 
@@ -66,7 +66,7 @@ export const getHistory = () => {
 };
 
 /****************************
- * GET SINGLE ITEM
+ * GET SINGLE HISTORY ITEM
  ****************************/
 export const getHistoryItem = (id) => {
   return getHistory().find((i) => i.id === id) || null;
@@ -86,7 +86,7 @@ export const deleteHistoryItem = (id) => {
 };
 
 /****************************
- * CLEAR ALL
+ * CLEAR ALL HISTORY
  ****************************/
 export const clearHistory = () => {
   try {
@@ -98,7 +98,9 @@ export const clearHistory = () => {
 };
 
 /****************************
- * HISTORY STATISTICS
+ * HISTORY STATS (FIXED)
+ * ✔ No NaN
+ * ✔ Whole numbers for avg confidence
  ****************************/
 export const getHistoryStats = () => {
   try {
@@ -121,8 +123,7 @@ export const getHistoryStats = () => {
     return {
       total: history.length,
       diseases,
-     avgConfidence: Math.round(totalConfidence / history.length)
-
+      avgConfidence: Math.round(totalConf / history.length), // FIXED ✔
     };
   } catch (err) {
     console.error("❌ Stats error:", err);
@@ -168,4 +169,3 @@ export const searchHistory = (query) => {
 export const getUniqueDiseases = () => {
   return [...new Set(getHistory().map((item) => item.result.disease))];
 };
-
