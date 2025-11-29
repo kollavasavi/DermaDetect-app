@@ -29,7 +29,7 @@ function Results() {
   const hasSavedRef = useRef(false);
 
   /*****************************************
-   * LOAD RESULT & SAVE TO HISTORY (FIXED)
+   * LOAD RESULT & SAVE TO HISTORY
    *****************************************/
   useEffect(() => {
     if (location.state?.result) {
@@ -37,18 +37,10 @@ function Results() {
       console.log("📥 Received:", r);
       setResult(r);
 
-      // Save only once
       if (!location.state?.fromHistory && !hasSavedRef.current) {
-        
-        // FIXED CONFIDENCE HANDLING
         let raw = Number(r.confidence) || 0;
-
-        // Only multiply if 0–1 percentage
-        if (raw > 0 && raw <= 1) {
-          raw = raw * 100;
-        }
-
-        let finalConfidence = Math.round(raw);
+        let finalConfidence = raw <= 1 ? raw * 100 : raw;
+        finalConfidence = Math.round(finalConfidence);
 
         const formatted = {
           disease: r.disease || r.prediction || "Unknown",
@@ -147,16 +139,11 @@ function Results() {
   }
 
   /*****************************************
-   * CONFIDENCE FIX (DISPLAY ONLY)
+   * CONFIDENCE FIX (FINAL)
    *****************************************/
   let raw = Number(result.confidence) || 0;
-
-  // FIX AGAIN DURING DISPLAY
-  if (raw > 0 && raw <= 1) {
-    raw = raw * 100;
-  }
-
-  let finalConfidence = Math.round(raw);
+  let finalConfidence = raw <= 1 ? raw * 100 : raw;
+  finalConfidence = Math.round(finalConfidence);
 
   const disease = result.disease || result.prediction || "Unknown";
   const metadata = result.metadata || {};
@@ -186,13 +173,13 @@ function Results() {
             </button>
           </div>
 
-          {/* Condition */}
+          {/* Detected Condition */}
           <div className="border-l-4 border-blue-500 pl-6 mb-6 bg-blue-50 py-4 rounded-r-xl">
             <p className="text-sm text-gray-600">Detected Condition</p>
             <h2 className="text-3xl font-bold">{disease}</h2>
           </div>
 
-          {/* Confidence */}
+          {/* 🌟 CONFIDENCE CIRCLE (RESTORED + FIXED) */}
           <div className="flex items-center gap-4 mb-6">
             <span className={`px-5 py-2 rounded-full font-semibold ${badge.color}`}>
               {badge.text}
@@ -201,6 +188,7 @@ function Results() {
             <div className="relative w-24 h-24">
               <svg className="transform -rotate-90 w-24 h-24">
                 <circle cx="48" cy="48" r="40" strokeWidth="8" className="text-gray-200" fill="none" />
+
                 <circle
                   cx="48"
                   cy="48"
@@ -209,9 +197,16 @@ function Results() {
                   fill="none"
                   strokeDasharray={`${2 * Math.PI * 40}`}
                   strokeDashoffset={`${2 * Math.PI * 40 * (1 - finalConfidence / 100)}`}
-                  className={getSeverityColor(finalConfidence)}
+                  className={
+                    finalConfidence >= 80
+                      ? "stroke-green-500"
+                      : finalConfidence >= 60
+                      ? "stroke-yellow-500"
+                      : "stroke-red-500"
+                  }
                 />
               </svg>
+
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className={`text-xl font-bold ${getSeverityColor(finalConfidence)}`}>
                   {finalConfidence}%
