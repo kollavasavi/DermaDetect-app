@@ -1,279 +1,155 @@
 // historyUtils.js
-// Utility functions for managing analysis history in localStorage
+// FIXED version — works with your SkinDiseaseForm and Results.jsx
 
 const HISTORY_KEY = 'analysisHistory';
 
 /**
- * Save a new analysis to history
- * @param {Object} result - The prediction result object
- * @returns {Object} The saved history item
+ * Normalize result so History always receives:
+ * result = {
+ *   prediction: { disease, confidence },
+ *   metadata: {...}
+ * }
  */
+const normalizeResult = (result) => {
+  return {
+    prediction: {
+      disease: result.disease || result.prediction || "Unknown",
+      confidence: Number(result.confidence) || 0,
+    },
+    metadata: result.metadata || {},
+    all_predictions: result.all_predictions || {},
+    recommendations: result.recommendations || [],
+    model_details: result.model_details || {},
+  };
+};
+
+/** SAVE to history */
 export const saveToHistory = (result) => {
   try {
-    // Get existing history
     const existingHistory = getHistory();
     
-    // Generate unique ID with timestamp and random string
+    // Normalize before saving
+    const normalized = normalizeResult(result);
+
     const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substr(2, 9);
-    const id = `${timestamp}-${randomStr}`;
-    
-    // Check for duplicate within last 5 seconds (prevents StrictMode double-save)
-    const recentDuplicate = existingHistory.find(item => {
-      const itemTime = parseInt(item.id.split('-')[0]);
-      const timeDiff = timestamp - itemTime;
-      
-      return (
-        timeDiff < 5000 && // Within last 5 seconds
-        item.result.prediction.disease === result.prediction.disease &&
-        item.result.prediction.confidence === result.prediction.confidence &&
-        item.result.metadata?.symptoms === result.metadata?.symptoms
-      );
-    });
-    
-    // If duplicate found, return existing item instead of creating new one
-    if (recentDuplicate) {
-      console.log('⚠️ Duplicate save detected within 5 seconds - skipping');
-      return recentDuplicate;
-    }
-    
-    // Create new history item
+    const id = `${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+
     const historyItem = {
-      id: id,
+      id,
       timestamp: new Date().toISOString(),
-      result: result
+      result: normalized
     };
-    
-    // Add to beginning of array (newest first)
-    const updatedHistory = [historyItem, ...existingHistory];
-    
-    // Keep only last 50 analyses to prevent localStorage overflow
-    const limitedHistory = updatedHistory.slice(0, 50);
-    
-    // Save to localStorage
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(limitedHistory));
-    
-    console.log('✅ Saved to history:', historyItem.id);
+
+    const updated = [historyItem, ...existingHistory].slice(0, 50); // limit 50
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+
+    console.log("✅ Saved normalized history:", historyItem);
     return historyItem;
-  } catch (error) {
-    console.error('❌ Error saving to history:', error);
+  } catch (err) {
+    console.error("❌ Error saving history:", err);
     return null;
   }
 };
 
-/**
- * Get all history items
- * @returns {Array} Array of history items
- */
+/** GET history */
 export const getHistory = () => {
   try {
-    const history = localStorage.getItem(HISTORY_KEY);
-    return history ? JSON.parse(history) : [];
-  } catch (error) {
-    console.error('❌ Error loading history:', error);
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const history = raw ? JSON.parse(raw) : [];
+
+    // Normalize all old records too
+    return history.map((item) => ({
+      ...item,
+      result: normalizeResult(item.result)
+    }));
+  } catch (err) {
+    console.error("❌ Error loading history:", err);
     return [];
   }
 };
 
-/**
- * Get a specific history item by ID
- * @param {string} id - The history item ID
- * @returns {Object|null} The history item or null if not found
- */
 export const getHistoryItem = (id) => {
-  try {
-    const history = getHistory();
-    return history.find(item => item.id === id) || null;
-  } catch (error) {
-    console.error('❌ Error getting history item:', error);
-    return null;
-  }
+  return getHistory().find((i) => i.id === id) || null;
 };
 
-/**
- * Delete a specific history item
- * @param {string} id - The history item ID to delete
- * @returns {boolean} Success status
- */
+/** DELETE */
 export const deleteHistoryItem = (id) => {
   try {
-    const history = getHistory();
-    const updatedHistory = history.filter(item => item.id !== id);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
-    console.log('✅ Deleted history item:', id);
+    const updated = getHistory().filter((i) => i.id !== id);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
     return true;
-  } catch (error) {
-    console.error('❌ Error deleting history item:', error);
+  } catch {
     return false;
   }
 };
 
-/**
- * Clear all history
- * @returns {boolean} Success status
- */
+/** CLEAR */
 export const clearHistory = () => {
   try {
     localStorage.removeItem(HISTORY_KEY);
-    console.log('✅ Cleared all history');
     return true;
-  } catch (error) {
-    console.error('❌ Error clearing history:', error);
+  } catch {
     return false;
   }
 };
 
-/**
- * Get history statistics
- * @returns {Object} Statistics about the history
- */
+/** STATS — FIXED (no NaN) */
 export const getHistoryStats = () => {
   try {
     const history = getHistory();
-    
+
     if (history.length === 0) {
-      return {
-        total: 0,
-        diseases: {},
-        avgConfidence: 0,
-        lastAnalysis: null
-      };
+      return { total: 0, diseases: {}, avgConfidence: 0 };
     }
-    
-    // Calculate disease distribution
+
     const diseases = {};
     let totalConfidence = 0;
-    
-    history.forEach(item => {
-      const disease = item.result.prediction.disease;
-      diseases[disease] = (diseases[disease] || 0) + 1;
-      totalConfidence += item.result.prediction.confidence;
+
+    history.forEach((item) => {
+      const d = item.result.prediction.disease || "Unknown";
+      const c = Number(item.result.prediction.confidence) || 0;
+
+      diseases[d] = (diseases[d] || 0) + 1;
+      totalConfidence += c;
     });
-    
+
     return {
       total: history.length,
-      diseases: diseases,
-      avgConfidence: Math.round(totalConfidence / history.length * 10) / 10,
-      lastAnalysis: history[0].timestamp
+      diseases,
+      avgConfidence: Math.round((totalConfidence / history.length) * 10) / 10,
     };
-  } catch (error) {
-    console.error('❌ Error calculating history stats:', error);
-    return {
-      total: 0,
-      diseases: {},
-      avgConfidence: 0,
-      lastAnalysis: null
-    };
+  } catch {
+    return { total: 0, diseases: {}, avgConfidence: 0 };
   }
 };
 
-/**
- * Export history as JSON file
- * @param {string} filename - Optional filename
- */
-export const exportHistory = (filename = 'analysis-history.json') => {
-  try {
-    const history = getHistory();
-    
-    if (history.length === 0) {
-      console.log('⚠️ No history to export');
-      return false;
-    }
-    
-    const dataStr = JSON.stringify(history, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
-    // Create download link
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    console.log('✅ Exported history to:', filename);
-    return true;
-  } catch (error) {
-    console.error('❌ Error exporting history:', error);
-    return false;
-  }
+/** EXPORT */
+export const exportHistory = (filename = "analysis-history.json") => {
+  const data = JSON.stringify(getHistory(), null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+
+  URL.revokeObjectURL(url);
 };
 
-/**
- * Search history by disease name or symptoms
- * @param {string} query - Search query
- * @returns {Array} Filtered history items
- */
+/** SEARCH */
 export const searchHistory = (query) => {
-  try {
-    if (!query || query.trim() === '') {
-      return getHistory();
-    }
-    
-    const history = getHistory();
-    const lowerQuery = query.toLowerCase().trim();
-    
-    return history.filter(item => 
-      item.result.prediction.disease.toLowerCase().includes(lowerQuery) ||
-      item.result.metadata?.symptoms?.toLowerCase().includes(lowerQuery) ||
-      item.result.metadata?.duration?.toLowerCase().includes(lowerQuery) ||
-      item.result.metadata?.severity?.toLowerCase().includes(lowerQuery)
+  const q = query.toLowerCase();
+  return getHistory().filter((item) => {
+    const r = item.result;
+    return (
+      r.prediction.disease.toLowerCase().includes(q) ||
+      r.metadata.symptoms?.toLowerCase().includes(q)
     );
-  } catch (error) {
-    console.error('❌ Error searching history:', error);
-    return [];
-  }
+  });
 };
 
-/**
- * Get unique diseases from history
- * @returns {Array} Array of unique disease names
- */
+/** Unique Diseases */
 export const getUniqueDiseases = () => {
-  try {
-    const history = getHistory();
-    const diseases = history.map(item => item.result.prediction.disease);
-    return [...new Set(diseases)];
-  } catch (error) {
-    console.error('❌ Error getting unique diseases:', error);
-    return [];
-  }
-};
-
-/**
- * Get history filtered by disease
- * @param {string} disease - Disease name to filter by
- * @returns {Array} Filtered history items
- */
-export const getHistoryByDisease = (disease) => {
-  try {
-    const history = getHistory();
-    return history.filter(item => 
-      item.result.prediction.disease.toLowerCase() === disease.toLowerCase()
-    );
-  } catch (error) {
-    console.error('❌ Error filtering by disease:', error);
-    return [];
-  }
-};
-
-/**
- * Get history filtered by date range
- * @param {Date} startDate - Start date
- * @param {Date} endDate - End date
- * @returns {Array} Filtered history items
- */
-export const getHistoryByDateRange = (startDate, endDate) => {
-  try {
-    const history = getHistory();
-    return history.filter(item => {
-      const itemDate = new Date(item.timestamp);
-      return itemDate >= startDate && itemDate <= endDate;
-    });
-  } catch (error) {
-    console.error('❌ Error filtering by date:', error);
-    return [];
-  }
+  return [...new Set(getHistory().map((i) => i.result.prediction.disease))];
 };
