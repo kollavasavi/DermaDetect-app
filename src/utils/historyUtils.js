@@ -121,7 +121,8 @@ export const getHistoryStats = () => {
     return {
       total: history.length,
       diseases,
-      avgConfidence: Number((totalConf / history.length).toFixed(1))
+     avgConfidence: Math.round(totalConfidence / history.length)
+
     };
   } catch (err) {
     console.error("❌ Stats error:", err);
@@ -167,3 +168,4 @@ export const searchHistory = (query) => {
 export const getUniqueDiseases = () => {
   return [...new Set(getHistory().map((item) => item.result.disease))];
 };
+
