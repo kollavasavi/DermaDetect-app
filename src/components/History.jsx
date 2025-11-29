@@ -80,6 +80,7 @@ function History() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
+
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -100,6 +101,7 @@ function History() {
                 )}
               </div>
             </div>
+
             <button
               onClick={() => navigate('/form')}
               className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md font-medium"
@@ -108,17 +110,19 @@ function History() {
             </button>
           </div>
 
-          {/* Statistics */}
+          {/* Stats Section */}
           {stats && stats.total > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
               <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
                 <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
                 <p className="text-sm text-gray-600 mt-1">Total Analyses</p>
               </div>
+
               <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
                 <p className="text-3xl font-bold text-green-600">{stats.avgConfidence.toFixed(1)}%</p>
                 <p className="text-sm text-gray-600 mt-1">Avg Confidence</p>
               </div>
+
               <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
                 <p className="text-3xl font-bold text-purple-600">{Object.keys(stats.diseases).length}</p>
                 <p className="text-sm text-gray-600 mt-1">Unique Diseases</p>
@@ -127,7 +131,7 @@ function History() {
           )}
         </div>
 
-        {/* Search and Actions */}
+        {/* Search + Action Buttons */}
         {history.length > 0 && (
           <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
             <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -145,6 +149,7 @@ function History() {
                   </svg>
                 </div>
               </div>
+
               <div className="flex gap-2">
                 <button
                   onClick={() => exportHistory()}
@@ -155,6 +160,7 @@ function History() {
                   </svg>
                   Export
                 </button>
+
                 <button
                   onClick={handleClearAll}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center gap-2"
@@ -191,16 +197,24 @@ function History() {
             {history.map((item) => (
               <div key={item.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all">
                 <div className="flex items-start justify-between">
+
+                  {/* LEFT SIDE */}
                   <div className="flex-1">
+
+                    {/* Disease Name + Confidence */}
                     <div className="flex items-center gap-3 mb-3">
                       <h3 className="text-xl font-bold text-gray-800">
-                        {item.result.prediction.disease}
+                        {item.result.disease || item.result.prediction || "Unknown"}
                       </h3>
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getConfidenceColor(item.result.prediction.confidence)}`}>
-                        {item.result.prediction.confidence}%
+
+                      <span 
+                        className={`px-3 py-1 rounded-full text-sm font-semibold ${getConfidenceColor(item.result.confidence)}`}
+                      >
+                        {Math.round(item.result.confidence || 0)}%
                       </span>
                     </div>
-                    
+
+                    {/* Metadata */}
                     {item.result.metadata && (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                         {item.result.metadata.symptoms && (
@@ -209,12 +223,14 @@ function History() {
                             <p className="text-gray-700 font-medium">{item.result.metadata.symptoms}</p>
                           </div>
                         )}
+
                         {item.result.metadata.duration && (
                           <div className="text-sm">
                             <span className="text-gray-500">Duration:</span>
                             <p className="text-gray-700 font-medium">{item.result.metadata.duration}</p>
                           </div>
                         )}
+
                         {item.result.metadata.severity && (
                           <div className="text-sm">
                             <span className="text-gray-500">Severity:</span>
@@ -223,7 +239,8 @@ function History() {
                         )}
                       </div>
                     )}
-                    
+
+                    {/* Timestamp */}
                     <p className="text-sm text-gray-500">
                       <svg className="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -231,7 +248,8 @@ function History() {
                       {formatDate(item.timestamp)}
                     </p>
                   </div>
-                  
+
+                  {/* RIGHT SIDE BUTTONS */}
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleViewResult(item)}
@@ -239,6 +257,7 @@ function History() {
                     >
                       View Details
                     </button>
+
                     {showDeleteConfirm === item.id ? (
                       <div className="flex gap-2">
                         <button
@@ -264,12 +283,14 @@ function History() {
                         </svg>
                       </button>
                     )}
+
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+
       </div>
     </div>
   );
