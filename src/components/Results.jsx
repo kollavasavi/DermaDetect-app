@@ -25,14 +25,14 @@ function Results() {
   const [error, setError] = useState('');
   const [debugInfo, setDebugInfo] = useState(null);
   const [saved, setSaved] = useState(false);
-  
+
   const hasSavedRef = useRef(false);
 
   useEffect(() => {
     if (location.state?.result) {
       console.log('📥 Received result in Results page:', location.state.result);
       setResult(location.state.result);
-      
+
       if (!location.state?.fromHistory && !hasSavedRef.current) {
         const historyItem = saveToHistory(location.state.result);
         if (historyItem) {
@@ -41,12 +41,12 @@ function Results() {
           console.log('✅ Analysis saved to local history');
         }
       }
-      
+
       fetchAdvice(location.state.result);
     } else {
       navigate('/form');
     }
-    
+
     return () => {
       hasSavedRef.current = false;
     };
@@ -57,17 +57,17 @@ function Results() {
     setError('');
     setDebugInfo(null);
     try {
-      const disease = predictionResult.disease || 
-                     predictionResult.prediction || 
-                     predictionResult.prediction?.disease;
-      
+      const disease = predictionResult.disease ||
+                      predictionResult.prediction ||
+                      predictionResult.prediction?.disease;
+
       console.log('🔍 Extracted disease for LLM:', disease);
-      
+
       if (!disease) {
         setError('Disease information not found in results');
         return;
       }
-      
+
       const response = await llmAPI.getAdvice(
         disease,
         predictionResult.metadata?.symptoms || predictionResult.symptoms || '',
@@ -134,22 +134,23 @@ function Results() {
     );
   }
 
-  // CRITICAL FIX: Extract and convert confidence properly
-  console.log('🔍 Full result object:', JSON.stringify(result, null, 2));
-  
+  // 🔥🔥 FINAL FIX FOR THE 1% BUG 🔥🔥
   const disease = result.disease || result.prediction;
-  // Convert confidence to number and ensure it's valid
-  const rawConfidence = result.confidence ?? 0;
-  const confidence = Number(rawConfidence);
+  let rawConfidence = result.confidence ?? 0;
+
+  let confidence = Number(rawConfidence);
+  if (confidence <= 1) {
+    confidence = confidence * 100; // convert decimals to percentage
+  }
+
   const displayConfidence = isNaN(confidence) ? 0 : confidence;
   const metadata = result.metadata || {};
-  
-  console.log('✅ Extracted disease:', disease);
-  console.log('✅ Raw confidence:', rawConfidence);
-  console.log('✅ Converted confidence:', confidence);
-  console.log('✅ Display confidence:', displayConfidence);
-  console.log('✅ Is NaN?:', isNaN(confidence));
-  
+
+  console.log('🔍 Full result object:', JSON.stringify(result, null, 2));
+  console.log('Raw confidence:', rawConfidence);
+  console.log('Converted confidence:', confidence);
+  console.log('Display confidence:', displayConfidence);
+
   const badge = getSeverityBadge(displayConfidence);
 
   return (
@@ -182,7 +183,7 @@ function Results() {
               New Analysis
             </button>
           </div>
-          
+
           <div className="border-l-4 border-blue-500 pl-6 mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 py-4 rounded-r-xl">
             <p className="text-sm text-gray-600 font-medium mb-1">Detected Condition</p>
             <h2 className="text-3xl font-bold text-gray-800">{disease || 'Unknown'}</h2>
@@ -240,6 +241,7 @@ function Results() {
                     <p className="font-medium text-gray-800">{metadata.symptoms}</p>
                   </div>
                 )}
+
                 {metadata.duration && (
                   <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 shadow-sm">
                     <div className="flex items-center gap-2 mb-2">
@@ -251,6 +253,7 @@ function Results() {
                     <p className="font-medium text-gray-800">{metadata.duration}</p>
                   </div>
                 )}
+
                 {metadata.severity && (
                   <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200 shadow-sm">
                     <div className="flex items-center gap-2 mb-2">
@@ -267,6 +270,7 @@ function Results() {
           )}
         </div>
 
+        {/* Medical Advice */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 border border-indigo-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -274,7 +278,9 @@ function Results() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Medical Advice & Care</h2>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              Medical Advice & Care
+            </h2>
           </div>
 
           {loadingAdvice && (
@@ -332,6 +338,7 @@ function Results() {
                   </p>
                 </div>
               </div>
+
               <div 
                 className="medical-advice-content"
                 dangerouslySetInnerHTML={{ __html: renderMarkdownSafe(advice) }}
@@ -349,6 +356,7 @@ function Results() {
           )}
         </div>
 
+        {/* DISCLAIMER */}
         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500 rounded-r-2xl p-6 shadow-lg mb-6">
           <div className="flex gap-4">
             <div className="flex-shrink-0">
@@ -377,6 +385,7 @@ function Results() {
             </svg>
             View History
           </button>
+
           <button
             onClick={() => navigate('/form')}
             className="py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold flex items-center justify-center gap-2"
@@ -389,6 +398,7 @@ function Results() {
         </div>
       </div>
 
+      {/* Embedded styling */}
       <style jsx>{`
         .medical-advice-content {
           line-height: 1.8;
