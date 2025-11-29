@@ -1,4 +1,4 @@
-chatgpt are u even understanging what im saying 😭😭😭 and import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   getHistory, 
@@ -560,3 +560,4 @@ function Results() {
 }
 
 export default Results; 
+
